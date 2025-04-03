@@ -31,31 +31,23 @@ router.post("/register", async (req, res) => {
 //login
 
 router.post("/login", async (req, res) => {
-    try{
-        //trazenje korisnika
-        const user = await User.findOne({ username: req.body.username });
-        if (!user) {
-            return res.status(401).json({ message: "Invalid Credentials" });
-          }
-
-        //validacija lozinke
-        await bcrypt.compare(
-            req.body.password, 
-            user.password,
-            (err, result) => {
-                if(result) {
-                    return res.status(200).json({ _id: user._id, username: user.username });;
-                }
-
-                console.log(err);
-                return res.status(401).json({ message: "Invalid Credentials" });
-            
-        });
-        
-    } catch(err){
-        console.log(err);
-        res.status(401).send(err.message);
+  try {
+    // find user
+    const user = await User.findOne({ username: req.body.username });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid Credentials" });
     }
-});
 
+    // validate password
+    const isValid = await bcrypt.compare(req.body.password, user.password);
+    if (!isValid) {
+      return res.status(401).json({ message: "Invalid Credentials" });
+    }
+
+    res.status(200).json({ _id: user._id, username: user.username });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 module.exports = router;
