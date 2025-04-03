@@ -27,6 +27,8 @@ function App() {
   const [showRegister, setShowRegister] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
 
+  const [imageFile, setImageFile] = useState(null);
+
 
   useEffect(() => {
     const getPins = async () => {
@@ -54,25 +56,27 @@ function App() {
     });
   }
 
-  const handleSubmit = async (e) =>{
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newPin = {
-      username: currentUser,
-      title,
-      desc,
-      rating,
-      lat: newPlace.lat,
-      long: newPlace.long,
-      imgURL,
+  
+    const data = new FormData();
+    data.append("username", currentUser);
+    data.append("title", title);
+    data.append("desc", desc);
+    data.append("rating", rating);
+    data.append("lat", newPlace.lat);
+    data.append("long", newPlace.long);
+    data.append("image", imageFile); // must match multer field name
+  
+    try {
+      const res = await axios.post("/pins", data);
+      setPins([...pins, res.data]);
+      setNewPlace(null);
+    } catch (err) {
+      console.log(err);
     }
-    try{
-        const res = await axios.post("/pins", newPin)
-        setPins([...pins, res.data])
-        setNewPlace(null);
-    } catch(err){
-        console.log(err);
-    }
-  }
+  };
+  
 
 
   const handleLogout =() => {
@@ -124,9 +128,10 @@ function App() {
           <label>Image</label>
           <img 
             className="image"
-            src={p.imgURL}
-            alt="new"
-            />
+            src={`http://localhost:4000/uploads/${p.imgURL}`}
+            alt="place"
+          />
+
           <label>Information</label>
           <span className="username">Created by <b>{p.username}</b></span>
           <span className="date">{format(p.createdAt)}</span>
@@ -165,8 +170,7 @@ function App() {
               </select>
 
               <label>Image</label>
-              <textarea placeholder=" Enter Image URL.." onChange={(e) => setImgURL(e.target.value)}/>
-            
+              <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
 
               <button className="submitButton">Add Pin</button>
 
