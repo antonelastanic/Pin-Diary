@@ -193,6 +193,13 @@ function App() {
 
               <label>Image</label>
               <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
+              {imageFile && (
+                <img 
+                className="image"
+                src={URL.createObjectURL(imageFile)} 
+                alt="preview" 
+                />
+              )}
 
               <button className="submitButton">Add Pin</button>
 
