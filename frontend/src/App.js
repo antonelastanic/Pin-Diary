@@ -1,30 +1,28 @@
+
 import { useEffect, useState } from "react";
-import Map, { Marker, Popup } from 'react-map-gl';  
-import { Room, Star } from '@mui/icons-material';
-import "./app.css";
 import axios from "axios";
-import { format } from 'timeago.js';
+import Map from 'react-map-gl';  
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+import "./app.css";
+
+import { useAuth } from "./hooks/useAuth";
+
+import PinMarker from "./components/PinMarker";
+import NewPinPopup from "./components/NewPinPopup";
+import AuthButtons from "./components/AuthButtons";
 import Register from "./components/Register";
 import Login from "./components/Login";
-import 'mapbox-gl/dist/mapbox-gl.css';
+
 
 const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX; // Set your mapbox token here
 
 function App() {
-  const myStorage = window.localStorage;
 
-  const token = myStorage.getItem("token");
-  let decodedUser = null;
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      decodedUser = payload.username;
-    } catch (err) {
-      console.error("Invalid token format", err);
-    }
-  }
+  const myStorage = window.localStorage;
+  const { username } = useAuth();
+  const [currentUser, setCurrentUser] = useState(username);
   
-  const [currentUser, setCurrentUser] = useState(decodedUser);
   
 
   const [pins, setPins] = useState([]);
@@ -33,7 +31,7 @@ function App() {
 
   const [title, setTitle] = useState(null);
   const [desc, setDesc] = useState(null);
-  const [rating, setRating] = useState(0);
+  const [rating, setRating] = useState(1);
 
   const [showRegister, setShowRegister] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -53,9 +51,6 @@ function App() {
     getPins();
   },[]);
 
-  const handleMarkerClick = (id,lat,long) => {
-    setCurrentPlaceId(id);
-  }
 
   const handleAddClick = (e) => {
     console.log(e);
@@ -69,6 +64,7 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Submit triggered"); // ✅ Debug
   
     const token = myStorage.getItem("token");
     if (!token) {
@@ -83,6 +79,7 @@ function App() {
     data.append("lat", newPlace.lat);
     data.append("long", newPlace.long);
     data.append("image", imageFile);
+    data.append("username", currentUser);
   
     try {
       const res = await axios.post("/pins", data, {
@@ -118,120 +115,39 @@ function App() {
     >
 
 
-      {pins.map(p => (
-
-<>
-    <Marker longitude={p.long} latitude={p.lat} anchor="bottom" >
-      <Room 
-      style = {{color: p.username === currentUser ? "slateblue" : "tomato", cursor: "pointer"}}
-      onClick = {() => handleMarkerClick(p._id,p.lat,p.long)}
+    {pins.map((p) => (
+      <PinMarker
+        key={p._id}
+        pin={p}
+        currentUser={currentUser}
+        currentPlaceId={currentPlaceId}
+        setCurrentPlaceId={setCurrentPlaceId}
       />
-    </Marker>
+    ))}
 
-    {p._id === currentPlaceId && (
-    <Popup 
-      longitude={p.long} 
-      latitude={p.lat}
-      anchor="left"
-      onClose={() => setCurrentPlaceId(null)}
-      >
-        <div className="card">
-          <label>Place</label>
-          <h4 className="place">{p.title}</h4>
-          <label>Review</label>
-          <p className="desc">{p.desc}</p>
-          <label>Rating</label>
-          <div className="stars">
 
-          {Array(p.rating).fill().map((_, i) => (
-            <Star className="star" key={i} />
-          ))}
-          </div>
-          <label>Image</label>
-          <img 
-            className="image"
-            src={`http://localhost:4000/uploads/${p.imgURL}`}
-            alt="place"
-          />
-
-          <label>Information</label>
-          <span className="username">Created by <b>{p.username}</b></span>
-          <span className="date">{format(p.createdAt)}</span>
-
-        </div>
-      </Popup>
-    )}
-</>
-      ))}
-
-      {(newPlace && currentUser) && (
-          
-       <Popup 
-          latitude={newPlace.lat}
-          longitude={newPlace.long} 
-          closeButton = {true}
-          closeOnClick = {false}
-          anchor="left"
-          onClose={() => setNewPlace(null)}
-        >
-          <div >
-            <form onSubmit={handleSubmit}>
-              <label>Title</label>
-              <input placeholder="Enter a title.." onChange={(e) => setTitle(e.target.value)}/>
-
-              <label>Review</label>
-              <textarea placeholder="Write something about this place.." onChange={(e) => setDesc(e.target.value)}/>
-
-              <label>Rating</label>
-              <select onChange={(e) => setRating(e.target.value)}>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-              </select>
-
-              <label>Image</label>
-              <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
-              {imageFile && (
-                <img 
-                className="image"
-                src={URL.createObjectURL(imageFile)} 
-                alt="preview" 
-                />
-              )}
-
-              <button className="submitButton">Add Pin</button>
-
-            </form>
-         </div>
-       </Popup>
-      
+    {newPlace && currentUser && (
+      <NewPinPopup
+        newPlace={newPlace}
+        setNewPlace={setNewPlace}
+        handleSubmit={handleSubmit}
+        setTitle={setTitle}
+        setDesc={setDesc}
+        setRating={setRating}
+        setImageFile={setImageFile}
+      />
     )}
 
-      {currentUser ? (
-      <button className="button logout" onClick={handleLogout}>Log out</button>
-      ) : (
-        <div className="buttons">
 
-          <button 
-          className="button login" 
-          onClick={() => setShowLogin(true)}
-          >
-            Login
-          </button>
+    <AuthButtons
+      currentUser={currentUser}
+      onLogout={handleLogout}
+      onLoginClick={() => setShowLogin(true)}
+      onRegisterClick={() => setShowRegister(true)}
+    />
 
-          <button 
-          className="button register" 
-          onClick={() => setShowRegister(true)}
-          >
-            Register
-          </button>
-        </div>
-      )}
-      
-        {showRegister && <Register setShowRegister={setShowRegister}/>}
-        {showLogin && <Login setShowLogin={setShowLogin} myStorage={myStorage} setCurrentUser={setCurrentUser}/>}
+    {showRegister && <Register setShowRegister={setShowRegister}/>}
+    {showLogin && <Login setShowLogin={setShowLogin} myStorage={myStorage} setCurrentUser={setCurrentUser}/>}
         
     </Map>
   );
