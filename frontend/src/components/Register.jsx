@@ -1,5 +1,5 @@
 import "./register.css";
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import {Room, Cancel} from '@mui/icons-material';
 import axios from "axios";
 

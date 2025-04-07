@@ -20,16 +20,25 @@ export default function Login({setShowLogin, setCurrentUser, myStorage}){
             password: passwordRef.current.value,
         };
 
-        try{
+        try {
             const res = await axios.post("/users/login", user);
-            console.log(res.data.username)
-            myStorage.setItem('user', res.data.username);
-            setCurrentUser(res.data.username);
+            const token = res.data.token;
+            
+            // Save token to localStorage
+            myStorage.setItem("token", token);
+          
+            // Decode token to extract username
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            const username = payload.username;
+          
+            setCurrentUser(username);
             setShowLogin(false);
-            setError(false)        
-        } catch(err){
+            setError(false);
+            
+            } catch (err) {
             setError(true);
-        }
+            }
+          
 
     };
 

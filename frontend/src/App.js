@@ -13,7 +13,19 @@ const MAPBOX_TOKEN = process.env.REACT_APP_MAPBOX; // Set your mapbox token here
 function App() {
   const myStorage = window.localStorage;
 
-  const [currentUser, setCurrentUser] = useState(myStorage.getItem("user"));
+  const token = myStorage.getItem("token");
+  let decodedUser = null;
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      decodedUser = payload.username;
+    } catch (err) {
+      console.error("Invalid token format", err);
+    }
+  }
+  
+  const [currentUser, setCurrentUser] = useState(decodedUser);
+  
 
   const [pins, setPins] = useState([]);
   const [currentPlaceId, setCurrentPlaceId] = useState(null);
@@ -21,7 +33,6 @@ function App() {
 
   const [title, setTitle] = useState(null);
   const [desc, setDesc] = useState(null);
-  const [imgURL, setImgURL] = useState(null);
   const [rating, setRating] = useState(0);
 
   const [showRegister, setShowRegister] = useState(false);
@@ -59,29 +70,38 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
   
+    const token = myStorage.getItem("token");
+    if (!token) {
+      console.error("No token found. User must be logged in.");
+      return;
+    }
+  
     const data = new FormData();
-    data.append("username", currentUser);
     data.append("title", title);
     data.append("desc", desc);
     data.append("rating", rating);
     data.append("lat", newPlace.lat);
     data.append("long", newPlace.long);
-    data.append("image", imageFile); // must match multer field name
+    data.append("image", imageFile);
   
     try {
-      const res = await axios.post("/pins", data);
+      const res = await axios.post("/pins", data, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+  
       setPins([...pins, res.data]);
       setNewPlace(null);
     } catch (err) {
-      console.log(err);
+      console.error("Error submitting pin:", err.response?.data || err);
     }
-  };
-  
-
+  };  
 
   const handleLogout =() => {
-    myStorage.removeItem("user");
+    myStorage.removeItem("token");
     setCurrentUser(null);
+    
   }
 
   return (
@@ -104,7 +124,7 @@ function App() {
     <Marker longitude={p.long} latitude={p.lat} anchor="bottom" >
       <Room 
       style = {{color: p.username === currentUser ? "slateblue" : "tomato", cursor: "pointer"}}
-      onClick = {() => handleMarkerClick(p._id,p.lat,p.log)}
+      onClick = {() => handleMarkerClick(p._id,p.lat,p.long)}
       />
     </Marker>
 
@@ -123,7 +143,9 @@ function App() {
           <label>Rating</label>
           <div className="stars">
 
-          {Array(p.rating).fill(<Star className="star"/>)}
+          {Array(p.rating).fill().map((_, i) => (
+            <Star className="star" key={i} />
+          ))}
           </div>
           <label>Image</label>
           <img 

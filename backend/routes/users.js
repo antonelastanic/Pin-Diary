@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 
 //registracija
@@ -32,22 +33,23 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
-    // find user
     const user = await User.findOne({ username: req.body.username });
-    if (!user) {
-      return res.status(401).json({ message: "Invalid Credentials" });
-    }
+    if (!user) return res.status(401).json({ message: "Invalid Credentials" });
 
-    // validate password
     const isValid = await bcrypt.compare(req.body.password, user.password);
-    if (!isValid) {
-      return res.status(401).json({ message: "Invalid Credentials" });
-    }
+    if (!isValid) return res.status(401).json({ message: "Invalid Credentials" });
 
-    res.status(200).json({ _id: user._id, username: user.username });
+    const token = jwt.sign(
+      { id: user._id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "2h" }
+    );
+
+    res.status(200).json({ token });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
 module.exports = router;

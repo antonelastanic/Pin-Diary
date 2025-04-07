@@ -2,6 +2,8 @@ const router = require("express").Router();
 const multer = require("multer");
 const Pin = require("../models/Pin");
 const path = require("path");
+const verifyToken = require("../middleware/verifyToken");
+
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -32,21 +34,21 @@ const upload = multer({
 
 //creating a pin, new logic because of multer
 
-router.post("/", upload.single("image"), async (req, res) => {
-    try {
-      const newPin = new Pin({
-        username: req.body.username,
-        title: req.body.title,
-        desc: req.body.desc,
-        rating: req.body.rating,
-        lat: req.body.lat,
-        long: req.body.long,
-        imgURL: req.file.filename,
-      });
-  
-      const savedPin = await newPin.save();
-      res.status(200).json(savedPin);
-    } catch (err) {
+router.post("/", verifyToken, upload.single("image"), async (req, res) => {
+  try {
+    const newPin = new Pin({
+      username: req.user.username, // From token
+      title: req.body.title,
+      desc: req.body.desc,
+      rating: req.body.rating,
+      lat: req.body.lat,
+      long: req.body.long,
+      imgURL: req.file.filename,
+    });
+
+    const savedPin = await newPin.save();
+    res.status(200).json(savedPin);
+  } catch (err) {
       // Handle file size error
       if (err.code === "LIMIT_FILE_SIZE") {
         return res.status(400).json({ message: "Image too large. Max size is 5MB." });
